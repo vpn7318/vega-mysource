@@ -6584,7 +6584,7 @@ var require_crypto_js = __commonJS({
 // providers/saavn/stream.ts
 var stream_exports = {};
 __export(stream_exports, {
-  getStreams: () => getStreams
+  getStream: () => getStream
 });
 module.exports = __toCommonJS(stream_exports);
 var CryptoJS = __toESM(require_crypto_js());
@@ -6593,21 +6593,21 @@ var decodeLink = (link) => {
   if (!link.startsWith("saavn://")) {
     throw new Error("Invalid Saavn link");
   }
-  const encoded = link.slice("saavn://".length);
   try {
-    return JSON.parse(decodeURIComponent(encoded));
+    return JSON.parse(
+      decodeURIComponent(link.slice("saavn://".length))
+    );
   } catch (e) {
     throw new Error("Invalid Saavn song data");
   }
 };
 var clean = (value) => typeof value === "string" ? value.trim() : "";
 var decryptMediaUrl = (encrypted) => {
-  const value = clean(encrypted);
-  if (!value) {
-    throw new Error("Missing encrypted media URL");
+  if (!encrypted) {
+    throw new Error("Missing encrypted Saavn audio URL");
   }
   try {
-    const ciphertext = CryptoJS.enc.Base64.parse(value);
+    const ciphertext = CryptoJS.enc.Base64.parse(encrypted);
     const decrypted = CryptoJS.DES.decrypt(
       {
         ciphertext
@@ -6619,23 +6619,15 @@ var decryptMediaUrl = (encrypted) => {
       }
     );
     const url = CryptoJS.enc.Utf8.stringify(decrypted).replace(/\0+$/g, "").trim();
-    if (!url) {
-      throw new Error("Empty decrypted URL");
-    }
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      throw new Error("Invalid decrypted media URL");
+      throw new Error("Invalid decrypted URL");
     }
     return url.replace(/^http:\/\//i, "https://");
   } catch (e) {
     throw new Error("Failed to decrypt Saavn audio URL");
   }
 };
-var upgradeQuality = (url, wantedQuality) => {
-  if (!url) return url;
-  const quality = wantedQuality || 320;
-  return url.replace(/_(12|48|96|160|320)(?=\.[^./?]+(?:\?|$))/i, `_${quality}`).replace(/_(12|48|96|160|320)(?=\/?(?:\?|$))/i, `_${quality}`);
-};
-var getStreams = async function({
+var getStream = async function({
   link,
   providerContext
 }) {
@@ -6644,20 +6636,16 @@ var getStreams = async function({
   if (!encrypted) {
     throw new Error("No encrypted Saavn audio URL");
   }
-  const directUrl = decryptMediaUrl(encrypted);
-  const streams = [];
-  const qualities = [320, 160, 96];
-  for (const quality of qualities) {
-    const streamUrl = upgradeQuality(directUrl, quality);
-    streams.push({
+  const audioUrl = decryptMediaUrl(encrypted);
+  return [
+    {
       server: "JioSaavn",
-      link: streamUrl,
+      link: audioUrl,
       type: "audio",
-      quality: `${quality}kbps`,
-      tag: quality === 320 ? "High Quality" : void 0
-    });
-  }
-  return streams;
+      quality: "320kbps",
+      tag: "High Quality"
+    }
+  ];
 };
 /*! Bundled license information:
 
