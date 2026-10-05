@@ -1,6 +1,6 @@
 import {Post, ProviderContext} from "../types";
 
-const API = "https://saavn.dev/api/search/songs";
+const API = "https://www.jiosaavn.com/api.php";
 
 const feedQueries: Record<string, string> = {
   hindi: "hindi hits",
@@ -17,40 +17,43 @@ const clean = (value: unknown): string =>
 const imageUrl = (song: any): string => {
   const images = Array.isArray(song?.image) ? song.image : [];
   const best = images[images.length - 1] || images[0];
-  return clean(best?.url);
+  return clean(best?.link || best?.url);
 };
 
 const artists = (song: any): string => {
-  const primary = song?.artists?.primary;
-  if (Array.isArray(primary)) {
-    return primary.map((a: any) => clean(a?.name)).filter(Boolean).join(", ");
-  }
-  return "";
+  const value =
+    song?.more_info?.singers ||
+    song?.more_info?.primary_artists ||
+    song?.primary_artists ||
+    "";
+
+  return clean(value);
 };
 
 const packSong = (song: any): string => {
   const payload = {
     id: clean(song?.id),
-    name: clean(song?.name),
-    album: clean(song?.album?.name),
+    name: clean(song?.title || song?.song),
+    album: clean(song?.more_info?.album),
     artist: artists(song),
     image: imageUrl(song),
-    duration: Number(song?.duration) || 0,
-    downloadUrl: Array.isArray(song?.downloadUrl)
-      ? song.downloadUrl
-          .map((x: any) => ({quality: clean(x?.quality), url: clean(x?.url)}))
-          .filter((x: any) => x.url)
+    duration: Number(song?.more_info?.duration || song?.duration) || 0,
+    downloadUrl: Array.isArray(song?.more_info?.encrypted_media_url)
+      ? []
       : [],
   };
+
   return "saavn://" + encodeURIComponent(JSON.stringify(payload));
 };
 
 const toPost = (song: any): Post | null => {
   const id = clean(song?.id);
-  const name = clean(song?.name);
+  const name = clean(song?.title || song?.song);
+
   if (!id || !name) return null;
 
   const artist = artists(song);
+
   return {
     title: artist ? `${name} — ${artist}` : name,
     link: packSong(song),
@@ -67,20 +70,32 @@ async function requestSongs(
   providerContext: ProviderContext,
 ): Promise<Post[]> {
   const {axios} = providerContext;
-  const limit = 20;
-  const response = await axios.get(API, {
-    params: {
-      query,
-      page,
-      limit,
-    },
-    timeout: 15000,
-  });
 
-  const results = response?.data?.data?.results;
-  if (!Array.isArray(results)) return [];
+  try {
+    const response = await axios.get(API, {
+      params: {
+        __call: "search.getResults",
+        q: query,
+        n: 20,
+        p: page || 1,
+        _format: "json",
+        _marker: 0,
+        ctx: "web6dot0",
+        api_version: 4,
+      },
+      timeout: 15000,
+    });
 
-  return results.map(toPost).filter(Boolean) as Post[];
+    const results = response?.data?.results;
+
+    if (!Array.isArray(results)) return [];
+
+    return results
+      .map(toPost)
+      .filter(Boolean) as Post[];
+  } catch (error) {
+    return [];
+  }
 }
 
 export const getPosts = async function ({
@@ -94,7 +109,11 @@ export const getPosts = async function ({
   signal: AbortSignal;
   providerContext: ProviderContext;
 }): Promise<Post[]> {
-  return requestSongs(feedQueries[filter] || filter || "hindi hits", page, providerContext);
+  return requestSongs(
+    feedQueries[filter] || filter || "hindi hits",
+    page,
+    providerContext,
+  );
 };
 
 export const getSearchPosts = async function ({
