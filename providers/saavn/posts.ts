@@ -38,9 +38,10 @@ const packSong = (song: any): string => {
     artist: artists(song),
     image: imageUrl(song),
     duration: Number(song?.more_info?.duration || song?.duration) || 0,
-    downloadUrl: Array.isArray(song?.more_info?.encrypted_media_url)
-      ? []
-      : [],
+
+    encryptedMediaUrl: clean(
+      song?.more_info?.encrypted_media_url
+    ),
   };
 
   return "saavn://" + encodeURIComponent(JSON.stringify(payload));
@@ -112,7 +113,7 @@ export const getPosts = async function ({
   return requestSongs(
     feedQueries[filter] || filter || "hindi hits",
     page,
-    providerContext,
+    providerContext
   );
 };
 
@@ -127,5 +128,20 @@ export const getSearchPosts = async function ({
   signal: AbortSignal;
   providerContext: ProviderContext;
 }): Promise<Post[]> {
-  return requestSongs(searchQuery, page, providerContext);
+  return requestSongs(
+    searchQuery,
+    page,
+    providerContext
+  );
 };
+
+Abhi bas ye karo:
+
+1. "providers/saavn/posts.ts" kholo
+2. Purana poora code delete karo
+3. Upar wala poora code paste karo
+4. Commit changes / Save karo
+5. Test abhi mat karna
+6. Mujhe bas “save ho gaya” bolo.
+
+Uske baad main tumhe "stream.ts" ka poora code dunga jo is "encryptedMediaUrl" ko handle karega.
