@@ -49,4 +49,253 @@ const E = [
 const P = [
   16, 7, 20, 21, 29, 12, 28, 17,
   1, 15, 23, 26, 5, 18, 31, 10,
-  2, 8, 
+  2, 8, 24, 14, 32, 27, 3, 9,
+  19, 13, 30, 6, 22, 11, 4, 25
+];
+
+const S = [
+  [
+    14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7,
+    0,15,7,4,14,2,13,1,10,6,12,11,9,5,3,8,
+    4,1,14,8,13,6,2,11,15,12,9,7,3,10,5,0,
+    15,12,8,2,4,9,1,7,5,11,3,14,10,0,6,13
+  ],
+  [
+    15,1,8,14,6,11,3,4,9,7,2,13,12,0,5,10,
+    3,13,4,7,15,2,8,14,12,0,1,10,6,9,11,5,
+    0,14,7,11,10,4,13,1,5,8,12,6,9,3,2,15,
+    13,8,10,1,3,15,4,2,11,6,7,12,0,5,14,9
+  ],
+  [
+    10,0,9,14,6,3,15,5,1,13,12,7,11,4,2,8,
+    13,7,0,9,3,4,6,10,2,8,5,14,12,11,15,1,
+    13,6,4,9,8,15,3,0,11,1,2,12,5,10,14,7,
+    1,10,13,0,6,9,8,7,4,15,14,3,11,5,2,12
+  ],
+  [
+    7,13,14,3,0,6,9,10,1,2,8,5,11,12,4,15,
+    13,8,11,5,6,15,0,3,4,7,2,12,1,10,14,9,
+    10,6,9,0,12,11,7,13,15,1,3,14,5,2,8,4,
+    3,15,0,6,10,1,13,8,9,4,5,11,12,7,2,14
+  ],
+  [
+    2,12,4,1,7,10,11,6,8,5,3,15,13,0,14,9,
+    14,11,2,12,4,7,13,1,5,0,15,10,3,9,8,6,
+    4,2,1,11,10,13,7,8,15,9,12,5,6,3,0,14,
+    11,8,12,7,1,14,2,13,6,15,0,9,10,4,5,3
+  ],
+  [
+    12,1,10,15,9,2,6,8,0,13,3,4,14,7,5,11,
+    10,15,4,2,7,12,9,5,6,1,13,14,0,11,3,8,
+    9,14,15,5,2,8,12,3,7,0,4,10,1,13,11,6,
+    4,3,2,12,9,5,15,10,11,14,1,7,6,0,8,13
+  ],
+  [
+    4,11,2,14,15,0,8,13,3,12,9,7,5,10,6,1,
+    13,0,11,7,4,9,1,10,14,3,5,12,2,15,8,6,
+    1,4,11,13,12,3,7,14,10,15,6,8,0,5,9,2,
+    6,11,13,8,1,4,10,7,9,5,0,15,14,2,3,12
+  ],
+  [
+    13,2,8,4,6,15,11,1,10,9,3,14,5,0,12,7,
+    1,15,13,8,10,3,7,4,12,5,6,11,0,14,9,2,
+    7,11,4,1,9,12,14,2,0,6,10,13,15,3,5,8,
+    2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11
+  ]
+];
+
+const permute = (input: number[], table: number[]): number[] =>
+  table.map(position => input[position - 1]);
+
+const xor = (a: number[], b: number[]): number[] =>
+  a.map((value, index) => value ^ b[index]);
+
+const bytesToBits = (bytes: number[]): number[] => {
+  const result: number[] = [];
+
+  for (const byte of bytes) {
+    for (let i = 7; i >= 0; i--) {
+      result.push((byte >> i) & 1);
+    }
+  }
+
+  return result;
+};
+
+const bitsToBytes = (bits: number[]): number[] => {
+  const result: number[] = [];
+
+  for (let i = 0; i < bits.length; i += 8) {
+    let value = 0;
+
+    for (let j = 0; j < 8; j++) {
+      value = (value << 1) | bits[i + j];
+    }
+
+    result.push(value);
+  }
+
+  return result;
+};
+
+const hexToBytes = (hex: string): number[] => {
+  const cleanHex = hex.replace(/[^0-9a-f]/gi, "");
+  const result: number[] = [];
+
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    result.push(parseInt(cleanHex.slice(i, i + 2), 16));
+  }
+
+  return result;
+};
+
+const bytesToHex = (bytes: number[]): string =>
+  bytes.map(x => x.toString(16).padStart(2, "0")).join("");
+
+const keyBytes = Array.from("38346591").map(c => c.charCodeAt(0));
+
+const decryptBlock = (block: number[]): number[] => {
+  const bits = permute(bytesToBits(block), IP);
+
+  let L = bits.slice(0, 32);
+  let R = bits.slice(32, 64);
+
+  /*
+   * This provider needs the standard DES key schedule.
+   * The remaining stream conversion is handled below.
+   */
+
+  const key = bytesToBits(keyBytes);
+
+  const C = key.slice(0, 28);
+  const D = key.slice(28, 56);
+
+  let c = C;
+  let d = D;
+
+  const roundKeys: number[][] = [];
+
+  for (let round = 0; round < 16; round++) {
+    const shifts =
+      round === 0 ||
+      round === 1 ||
+      round === 8 ||
+      round === 15
+        ? 1
+        : 2;
+
+    c = c.slice(shifts).concat(c.slice(0, shifts));
+    d = d.slice(shifts).concat(d.slice(0, shifts));
+
+    roundKeys.push(
+      permute(c.concat(d), [
+        14,17,11,24,1,5,3,28,
+        15,6,21,10,23,19,12,4,
+        26,8,16,7,27,20,13,2,
+        41,52,31,37,47,55,30,40,
+        51,45,33,48,44,49,39,56,
+        34,53,46,42,50,36,29,32
+      ])
+    );
+  }
+
+  for (let round = 15; round >= 0; round--) {
+    const expanded = permute(R, E);
+    const mixed = xor(expanded, roundKeys[round]);
+
+    const substituted: number[] = [];
+
+    for (let box = 0; box < 8; box++) {
+      const six = mixed.slice(box * 6, box * 6 + 6);
+
+      const row = (six[0] << 1) | six[5];
+      const col =
+        (six[1] << 3) |
+        (six[2] << 2) |
+        (six[3] << 1) |
+        six[4];
+
+      const value = S[box][row * 16 + col];
+
+      substituted.push(
+        (value >> 3) & 1,
+        (value >> 2) & 1,
+        (value >> 1) & 1,
+        value & 1
+      );
+    }
+
+    const f = permute(substituted, P);
+    const newR = xor(L, f);
+
+    L = R;
+    R = newR;
+  }
+
+  return bitsToBytes(
+    permute(R.concat(L), FP)
+  );
+};
+
+const decryptDES = (encrypted: string): string => {
+  const bytes = hexToBytes(encrypted);
+  const output: number[] = [];
+
+  for (let i = 0; i < bytes.length; i += 8) {
+    const block = bytes.slice(i, i + 8);
+
+    if (block.length === 8) {
+      output.push(...decryptBlock(block));
+    }
+  }
+
+  return String.fromCharCode(...output).replace(/\0+$/, "");
+};
+
+const decryptSaavnUrl = (encrypted: string): string => {
+  if (!encrypted) return "";
+
+  try {
+    const decrypted = decryptDES(encrypted);
+
+    if (!decrypted) return "";
+
+    return decrypted.startsWith("http://")
+      ? decrypted.replace("http://", "https://")
+      : decrypted;
+  } catch {
+    return "";
+  }
+};
+
+export const getStream = async function ({
+  link,
+}: {
+  link: string;
+  type: string;
+  signal?: AbortSignal;
+  providerContext: ProviderContext;
+  isDownload?: boolean;
+}): Promise<Stream[]> {
+  const song = decode(link);
+
+  const encrypted = String(
+    song?.encryptedMediaUrl || ""
+  );
+
+  const audioUrl = decryptSaavnUrl(encrypted);
+
+  if (!audioUrl) {
+    throw new Error("Unable to decrypt Saavn audio stream");
+  }
+
+  return [
+    {
+      server: "Saavn",
+      link: audioUrl,
+      type: "mp4",
+      quality: "Audio",
+      tag: "Audio",
+    },
+  ];
+};
