@@ -38,7 +38,6 @@ const packSong = (song: any): string => {
     artist: artists(song),
     image: imageUrl(song),
     duration: Number(song?.more_info?.duration || song?.duration) || 0,
-
     encryptedMediaUrl: clean(
       song?.more_info?.encrypted_media_url
     ),
@@ -134,12 +133,3 @@ export const getSearchPosts = async function ({
     providerContext
   );
 };
-
-1. "providers/saavn/posts.ts" kholo
-2. Purana poora code delete karo
-3. Upar wala poora code paste karo
-4. Commit changes / Save karo
-5. Test abhi mat karna
-6. Mujhe bas “save ho gaya” bolo.
-
-Uske baad main tumhe "stream.ts" ka poora code dunga jo is "encryptedMediaUrl" ko handle karega.
