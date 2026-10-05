@@ -1,0 +1,13 @@
+{
+  "name": "vega-saavn-provider",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "node build-bundled.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2",
+    "typescript": "^5.8.3"
+  }
+}
