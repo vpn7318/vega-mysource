@@ -135,8 +135,6 @@ export const getSearchPosts = async function ({
   );
 };
 
-Abhi bas ye karo:
-
 1. "providers/saavn/posts.ts" kholo
 2. Purana poora code delete karo
 3. Upar wala poora code paste karo
